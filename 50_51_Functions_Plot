@@ -1,0 +1,196 @@
+"""
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+from matplotlib.widgets import Cursor
+
+# Funções de proteção e correntes
+V = 4600  # Tensão do motor em volts
+P_hp = 200  # Potência em CV (HP)
+P_kw = P_hp * 0.7355  # Potência convertida para kW
+cos_phi = 0.9  # Fator de potência assumido
+
+# Corrente nominal do motor (em amperes)
+I_nom = P_kw / (np.sqrt(3) * V * cos_phi) * 1000  # Convertendo para watts
+
+# Correntes de atuação
+I_50 = 8 * I_nom  # Função 50: Instantânea, 8 vezes a corrente nominal
+I_51 = 1.5 * I_nom  # Função 51: Temporizada, 1.5 vezes a corrente nominal
+
+# Corrente ANSI do transformador (substitua pelo valor real)
+I_ANSI = 5 * I_nom  # Exemplo: 5 vezes a corrente nominal
+
+# Intervalo de corrente para o gráfico (1x a 10x a corrente nominal)
+I_range = np.logspace(np.log10(I_nom), np.log10(10 * I_nom), 1000)
+
+# Curva de tempo-inverso da função 51 (padrão IEC para simplificação)
+def t_51(I, I_pickup, TMS=1.0):
+    return TMS * 0.14 / ((I / I_pickup) ** 0.02 - 1)  # Equação inversa para função 51
+
+# Função para atualizar o gráfico
+def update_graph():
+    # Limpa o gráfico
+    ax.clear()
+
+    # Plotando as curvas de proteção
+    ax.plot(I_range, t_51(I_range, I_51), label='Função 51 (Temporizada)', color='blue')
+    ax.axvline(I_50, color='red', linestyle='--', label='Função 50 (Instantânea)')
+
+    # Atualizando corrente de curto-circuito
+    ax.axvline(current_cc, color='black', linestyle='-.', label=f'Corrente Curto {current_cc:.2f} A')
+
+    # Atualizando corrente nominal
+    ax.axvline(current_nom, color='green', linestyle='-', label=f'Corrente Nominal {current_nom:.2f} A')
+
+    # Adicionando ponto para corrente ANSI do transformador
+    ax.plot(I_ANSI, t_51(I_ANSI, I_51), 'o', color='orange', label=f'Corrente ANSI {I_ANSI:.2f} A')
+
+    # Configurando o gráfico com eixos logarítmicos
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+
+    # Adicionando título e rótulos dos eixos
+    ax.set_title('Curva de Proteção - Funções 50 e 51')
+    ax.set_xlabel('Corrente (A)')
+    ax.set_ylabel('Tempo (s)')
+
+    # Configurando a legenda
+    ax.legend(loc='upper right')
+
+    # Grade no gráfico
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+
+    # Renderizando o gráfico
+    canvas.draw()
+
+# Função para atualizar a posição do mouse
+def motion(event):
+    if event.inaxes:  # Verifica se o mouse está sobre o gráfico
+        x = event.xdata
+        y = event.ydata
+        if x is not None and y is not None:
+            current_info.set(f'Corrente: {x:.2f} A, Tempo: {y:.2f} s')
+
+# Valores iniciais para corrente de curto-circuito, corrente nominal e corrente ANSI
+current_cc = 2 * I_nom
+current_nom = I_nom
+current_ANSI = I_ANSI
+
+# Criando a janela principal
+root = tk.Tk()
+root.title("Curva de Proteção - Funções 50 e 51")
+
+# Criando a figura do Matplotlib
+fig, ax = plt.subplots(figsize=(10, 8))
+
+# Criando a figura do Matplotlib e a associando ao canvas
+canvas = FigureCanvasTkAgg(fig, master=root)
+canvas_widget = canvas.get_tk_widget()
+canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+# Plotando as curvas de proteção inicialmente
+update_graph()
+
+# Adicionando cursor ao gráfico
+cursor = Cursor(ax, useblit=True, color='red', linewidth=1)
+
+# Slider para corrente de curto-circuito
+slider_cc = tk.Scale(root, from_=I_nom, to=10 * I_nom, resolution=1, orient=tk.HORIZONTAL,
+                     label="Corrente de Curto-Circuito (A)", command=lambda x: update_cc(float(x)))
+slider_cc.set(current_cc)
+slider_cc.pack(fill=tk.X)
+
+# Slider para corrente nominal
+slider_nom = tk.Scale(root, from_=I_nom, to=10 * I_nom, resolution=1, orient=tk.HORIZONTAL,
+                      label="Corrente Nominal (A)", command=lambda x: update_nom(float(x)))
+slider_nom.set(current_nom)
+slider_nom.pack(fill=tk.X)
+
+# Slider para corrente ANSI
+slider_ansi = tk.Scale(root, from_=I_nom, to=10 * I_nom, resolution=1, orient=tk.HORIZONTAL,
+                       label="Corrente ANSI (A)", command=lambda x: update_ansi(float(x)))
+slider_ansi.set(current_ANSI)
+slider_ansi.pack(fill=tk.X)
+
+# Rótulo para exibir a corrente e o tempo
+current_info = tk.StringVar()
+info_label = tk.Label(root, textvariable=current_info, font=('Helvetica', 12))
+info_label.pack()
+
+# Funções para atualizar as correntes a partir dos sliders
+def update_cc(value):
+    global current_cc
+    current_cc = value
+    update_graph()
+
+def update_nom(value):
+    global current_nom
+    current_nom = value
+    update_graph()
+
+def update_ansi(value):
+    global current_ANSI, I_ANSI
+    current_ANSI = value
+    I_ANSI = value  # Atualizando o valor da corrente ANSI
+    update_graph()
+
+# Conectando a função de movimento do mouse
+fig.canvas.mpl_connect('motion_notify_event', motion)
+
+# Iniciando o loop principal da interface
+root.mainloop()
+"""
+
+
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.ticker import LogLocator, ScalarFormatter
+from matplotlib.widgets import Cursor
+
+# Test data for current range (logarithmic) and arbitrary time values
+I_range = np.logspace(0, 4, 1000)  # Current from 1 to 10,000 A
+
+# Arbitrary time-inverse curve (replace with your real data)
+def time_inverse_curve(I, pickup_current, TMS=1.0):
+    return TMS * 0.14 / ((I / pickup_current) ** 0.02 - 1)
+
+# Function to create the plot with logarithmic scale and add the cursor
+def create_protection_curve_plot_with_cursor():
+    fig, ax = plt.subplots(figsize=(10, 8))
+
+    # Plotting arbitrary curves (replace with real data)
+    ax.plot(I_range, time_inverse_curve(I_range, 100), label='Curve 1', color='blue')
+    ax.plot(I_range, time_inverse_curve(I_range, 500), label='Curve 2', color='green')
+
+    # Set axis to logarithmic scale
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+
+    # Customizing ticks and grid
+    ax.xaxis.set_major_formatter(ScalarFormatter())
+    ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs='auto', numticks=10))
+    ax.yaxis.set_major_formatter(ScalarFormatter())
+    ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs='auto', numticks=10))
+
+    # Adding major and minor gridlines
+    ax.grid(True, which='both', linestyle='--', linewidth=0.7)
+
+    # Axis labels
+    ax.set_xlabel('Current (A)')
+    ax.set_ylabel('Time (s)')
+
+    # Title and legend
+    ax.set_title('Logarithmic Protection Curves')
+    ax.legend(loc='upper right')
+
+    # Adding the cursor (crosshair style)
+    cursor = Cursor(ax, useblit=True, color='red', linewidth=1)
+
+    # Display the plot
+    plt.show()
+
+# Create the plot with the cursor
+create_protection_curve_plot_with_cursor()
+
